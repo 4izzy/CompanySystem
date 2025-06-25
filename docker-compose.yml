@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  department-service:
+    build: 
+      context: ./department-service
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://department-db:5432/department_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ZOV
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - department-db
+    networks:
+      - company-network
+
+  employee-service:
+    build: 
+      context: ./employee-service
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://employee-db:5432/employee_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ZOV
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - employee-db
+    networks:
+      - company-network
+
+  project-service:
+    build: 
+      context: ./project-service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://project-db:5432/project_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ZOV
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - project-db
+    networks:
+      - company-network
+
+  hr-service:
+    build: 
+      context: ./hr-service
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://hr-db:5432/hr_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=ZOV
+      - SPRING_PROFILES_ACTIVE=prod
+      - APP_JWT_SECRET=your-super-secret-key-here
+      - APP_JWT_EXPIRATION=86400000
+    depends_on:
+      - hr-db
+      - employee-service
+      - notification-service
+    networks:
+      - company-network
+
+  notification-service:
+    build: .
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/notification_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+    depends_on:
+      - postgres
+
+  department-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=department_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ZOV
+    volumes:
+      - department-data:/var/lib/postgresql/data
+    networks:
+      - company-network
+
+  employee-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=employee_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ZOV
+    volumes:
+      - employee-data:/var/lib/postgresql/data
+    networks:
+      - company-network
+
+  project-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=project_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ZOV
+    volumes:
+      - project-data:/var/lib/postgresql/data
+    networks:
+      - company-network
+
+  hr-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=hr_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ZOV
+    volumes:
+      - hr-data:/var/lib/postgresql/data
+    networks:
+      - company-network
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=notification_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=ZOV
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - company-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - company-network
+
+networks:
+  company-network:
+    driver: bridge
+
+volumes:
+  department-data:
+  employee-data:
+  project-data:
+  hr-data:
+  postgres_data:
+  prometheus-data:
+  grafana-data: 

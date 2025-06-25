@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: hr-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hr_db
+    username: postgres
+    password: ZOV
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8084
+
+# Feign client configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+  compression:
+    request:
+      enabled: true
+    response:
+      enabled: true
+
+logging:
+  level:
+    com.company.hr: DEBUG 
